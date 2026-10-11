@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/product_service.dart';
 
 /// Login/Signup screen with toggle between modes
 class LoginScreen extends StatefulWidget {
@@ -48,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = context.read<AuthService>();
+      final productService = context.read<ProductService>();
 
       if (_isSignup) {
         // Sign up new user
@@ -57,10 +59,12 @@ class _LoginScreenState extends State<LoginScreen> {
           name: _nameController.text.trim(),
         );
 
-        // Create user profile in Firestore
-        if (credential.user != null && mounted) {
-          await context.read<AuthService>().signOut(); // Just to be safe
-          // Note: ProductService.createUserProfile is called from HomeScreen init
+        // Create user profile in Firestore before navigating to home
+        if (credential.user != null) {
+          await productService.createUserProfile(
+            name: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+          );
         }
       } else {
         // Sign in existing user

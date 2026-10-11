@@ -23,8 +23,24 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Check Firebase deployment configuration
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APP_SHELF }}
+        run: |
+          test -n "$FIREBASE_OPTIONS_DART" || { echo "Missing FIREBASE_OPTIONS_DART repository secret"; exit 1; }
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "Missing FIREBASE_SERVICE_ACCOUNT_APP_SHELF repository secret"; exit 1; }
+
       - name: Prepare placeholder Firebase options
-        run: cp lib/firebase_options.example.dart lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
+        run: |
+          if [ -n "$FIREBASE_OPTIONS_DART" ]; then
+            printf '%s\n' "$FIREBASE_OPTIONS_DART" > lib/firebase_options.dart
+          else
+            cp lib/firebase_options.example.dart lib/firebase_options.dart
+          fi
 
       - name: Analyze
         run: flutter analyze
@@ -34,3 +50,12 @@ jobs:
 
       - name: Build web
         run: flutter build web --release
+
+      - name: Deploy to Firebase Hosting
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APP_SHELF }}
+          projectId: app-shelfsense
+          channelId: live

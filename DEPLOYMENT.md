@@ -45,4 +45,16 @@ flutter build appbundle --release
 ## Continuous integration
 
 GitHub Actions runs analysis, tests, and a web build on pushes and pull requests.
-It does not deploy the app or require Firebase service-account credentials.
+Pushes to `main` also deploy the web build to Firebase Hosting after validation
+passes. Before the first deployment, add these repository secrets in GitHub under
+**Settings → Secrets and variables → Actions**:
+
+- `FIREBASE_SERVICE_ACCOUNT_APP_SHELF`: the JSON key for a Firebase service
+  account with permission to deploy Firebase Hosting.
+- `FIREBASE_OPTIONS_DART`: the contents of your local
+  `lib/firebase_options.dart`. This lets CI build against your Firebase web app
+  without committing the local configuration file.
+
+Never commit the service-account key or Firebase configuration file. Pull
+requests run validation and use placeholder Firebase options; only pushes to
+`main` deploy to the live Hosting site.
