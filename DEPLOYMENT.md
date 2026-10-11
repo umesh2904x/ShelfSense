@@ -23,7 +23,7 @@ your Firebase project:
 npm install -g firebase-tools
 firebase login
 flutter build web --release
-firebase deploy --only hosting
+firebase deploy --only "firestore:rules,hosting" --project app-shelfsense
 ```
 
 ## Build Android
@@ -45,8 +45,9 @@ flutter build appbundle --release
 ## Continuous integration
 
 GitHub Actions runs analysis, tests, and a web build on pushes and pull requests.
-Pushes to `main` also deploy the web build to Firebase Hosting after validation
-passes. Before the first deployment, add these repository secrets in GitHub under
+Pushes to `main` also deploy the Firestore rules and web build to Firebase
+Hosting after validation passes. Before the first deployment, add these
+repository secrets in GitHub under
 **Settings → Secrets and variables → Actions**:
 
 - `FIREBASE_SERVICE_ACCOUNT_APP_SHELF`: the JSON key for a Firebase service
@@ -56,5 +57,6 @@ passes. Before the first deployment, add these repository secrets in GitHub unde
   without committing the local configuration file.
 
 Never commit the service-account key or Firebase configuration file. Pull
-requests run validation and use placeholder Firebase options; only pushes to
-`main` deploy to the live Hosting site.
+requests run validation and use placeholder Firebase options. If either secret
+is missing, validation still runs but the live deployment is skipped; only
+pushes to `main` with both secrets configured deploy to the production project.

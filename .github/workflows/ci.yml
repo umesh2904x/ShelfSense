@@ -24,13 +24,18 @@ jobs:
         run: flutter pub get
 
       - name: Check Firebase deployment configuration
+        id: firebase-deploy-config
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APP_SHELF }}
         run: |
-          test -n "$FIREBASE_OPTIONS_DART" || { echo "Missing FIREBASE_OPTIONS_DART repository secret"; exit 1; }
-          test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "Missing FIREBASE_SERVICE_ACCOUNT_APP_SHELF repository secret"; exit 1; }
+          if [ -n "$FIREBASE_OPTIONS_DART" ] && [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping live deploy; configure FIREBASE_OPTIONS_DART and FIREBASE_SERVICE_ACCOUNT_APP_SHELF repository secrets."
+          fi
 
       - name: Prepare placeholder Firebase options
         env:
@@ -52,10 +57,21 @@ jobs:
         run: flutter build web --release
 
       - name: Deploy to Firebase Hosting
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: FirebaseExtended/action-hosting-deploy@v0
+        if: steps.firebase-deploy-config.outputs.enabled == 'true'
+        uses: google-github-actions/auth@v2
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APP_SHELF }}
-          projectId: app-shelfsense
-          channelId: live
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APP_SHELF }}
+
+      - name: Set up Node.js
+        if: steps.firebase-deploy-config.outputs.enabled == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        if: steps.firebase-deploy-config.outputs.enabled == 'true'
+        run: npm install --global firebase-tools
+
+      - name: Deploy Firestore rules and Hosting
+        if: steps.firebase-deploy-config.outputs.enabled == 'true'
+        run: firebase deploy --only "firestore:rules,hosting" --project app-shelfsense
